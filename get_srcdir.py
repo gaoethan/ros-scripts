@@ -1,12 +1,31 @@
 import yaml
 import os
+import sys
+import urllib.request
+import subprocess
+import shlex
 
-infile = "rosdistro/lunar/distribution.yaml"
-outdir = "results"
+if len(sys.argv) == 1:
+   distro = "lunar" # default distro
+else:
+   distro = sys.argv[1]
+
+ros1 = ["groovy", "hydro", "indigo", "jade", "kinetic", "lunar", "melodic"]
+
+if distro in ros1:
+   disturl = "https://raw.githubusercontent.com/ros/rosdistro/master/" + distro + "/distribution.yaml"
+else:
+   disturl = "https://raw.githubusercontent.com/ros2/rosdistro/ros2/" + distro + "/distribution.yaml"
+
+outdir = "results/"
 if not os.path.exists(outdir):
    os.makedirs(outdir)
-outfile = outdir + "/lunar-url.csv"
-errfile = outdir + "/lunar-no-url.csv"
+
+infile = outdir + distro + ".yaml"
+outfile = outdir + distro + "-srcurl.csv"
+errfile = outdir + distro + "-srcurl-err.csv"
+
+urllib.request.urlretrieve (disturl, infile)
 
 o = open(outfile, 'w')
 e = open(errfile, 'w')
@@ -20,7 +39,10 @@ with open(infile, 'r') as stream:
             release = repo[1].get('release')
             if source and release:
                url = source.get('url')
-               version = release.get('version')
+               if distro in ros1:
+                  version = release.get('version')
+               else:
+                  version = source.get('version')
                if url and version:
                   url1 = url.replace('.git','')
                   version1 = version.replace('-0','')
@@ -33,3 +55,7 @@ with open(infile, 'r') as stream:
                e.write(name + '\n')
     except yaml.YAMLError as exc:
         print(exc)
+
+infile = outfile
+outfile = outdir + distro + "-srcdir.csv"
+subprocess.call(shlex.split('./get_srcdir.sh ' + infile + ' ' + outfile))
